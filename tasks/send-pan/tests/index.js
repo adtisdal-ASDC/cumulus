@@ -43,6 +43,9 @@ test('SendPan task calls upload', async (t) => {
         name: `${fileNameBase}.pdr`,
         path: 'some-pdr-path',
       },
+      running: [],
+      completed: [],
+      failed: [],
     },
   };
 
@@ -78,6 +81,9 @@ test('SendPan task sends PAN to HTTP server', async (t) => {
         name: 'test-send-http-pdr.pdr',
         path: 'some-pdr-path',
       },
+      running: [],
+      completed: [],
+      failed: [],
     },
   };
 
@@ -111,6 +117,9 @@ test('SendPan task sends PAN to s3', async (t) => {
         name: `${fileNameBase}.pdr`,
         path: 'some-pdr-path',
       },
+      running: [],
+      completed: [],
+      failed: [],
     },
   };
 
@@ -144,6 +153,9 @@ test('SendPan task throws error when provider protocol is not supported', async 
         name: 'test-send-ftp-pdr.pdr',
         path: 'some-pdr-path',
       },
+      running: [],
+      completed: [],
+      failed: [],
     },
   };
 
@@ -177,6 +189,9 @@ test('SendPan task sends PAN to default location when remoteDir is null', async 
         name: `${fileNameBase}.pdr`,
         path: 'some-pdr-path',
       },
+      running: [],
+      completed: [],
+      failed: [],
     },
   };
 
@@ -184,6 +199,7 @@ test('SendPan task sends PAN to default location when remoteDir is null', async 
     await validateInput(t, event.input);
     await validateConfig(t, event.config);
     const output = await sendPAN(event);
+    t.log(output);
     await validateOutput(t, output);
     const text = await S3.getTextObject(t.context.providerBucket, uploadPath);
     t.regex(text, regex);
@@ -191,5 +207,39 @@ test('SendPan task sends PAN to default location when remoteDir is null', async 
   } catch (error) {
     console.log(error);
     t.fail();
+  }
+});
+
+test('SendPan task with executions still running', async (t) => {
+  const event = {
+    config: {
+      provider: {
+        id: randomId('s3Provider'),
+        globalConnectionLimit: 5,
+        protocol: 's3',
+        host: t.context.providerBucket,
+      },
+      remoteDir: null,
+    },
+    input: {
+      pdr: {
+        name: 'test.pdr',
+        path: 'some-pdr-path',
+      },
+      running: ['arn:running:execution'],
+      completed: [],
+      failed: [],
+    },
+  };
+
+  try {
+    await validateInput(t, event.input);
+    await validateConfig(t, event.config);
+    await sendPAN(event);
+    t.fail();
+  } catch (error) {
+    if (error.message.includes('Executions still running')) {
+      t.pass();
+    }
   }
 });

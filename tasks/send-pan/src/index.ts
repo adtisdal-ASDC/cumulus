@@ -45,7 +45,12 @@ async function sendPAN(event: HandlerEvent): Promise<HandlerOutput> {
   const panName = input.pdr.name.replace(/\.pdr/gi, '.pan');
   const uploadPath = path.join(remoteDir, panName);
 
-  const pan = pdrHelpers.generatePAN();
+  if (input.running.length !== 0) {
+    throw new Error('Executions still running');
+  }
+
+  const executions = input.failed.map((exc) => exc.arn).concat(input.completed);
+  const pan = await pdrHelpers.generateShortPAN(executions);
 
   const localPath = path.join(tmpdir(), panName);
   fs.writeFileSync(localPath, pan);
